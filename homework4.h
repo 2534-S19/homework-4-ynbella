@@ -1,8 +1,8 @@
 /*
  * homework4.h
  *
- *  Created on:
- *      Author:
+ *  Created on: April 09, 2020
+ *      Author: Youness Bella
  */
 
 #ifndef HOMEWORK4_H_
@@ -12,7 +12,7 @@
 void initBoard();
 bool charFSM(char rChar);
 
-// TODO: Define any constants that are local to homework.c using #define
-
+// Define any constants that are local to homework.c using #define
+enum State {FIRST, SECOND, THIRD, FOURTH}; // Used to keep track of FSM state
 
 #endif /* HOMEWORK4_H_ */

@@ -1,104 +1,107 @@
 #include <ti/devices/msp432p4xx/driverlib/driverlib.h>
 #include "homework4.h"
 
-int main(void)
-{
-    char rChar;
-    char *response = "\n\n\r2534 is the best course in the curriculum!\r\n\n";
+int main(void) {
+	char rChar; // Stores most recently entered character
 
-    // TODO: Declare the variables that main uses to interact with your state machine.
-    bool finished = false;
+	// Response to display when correct character sequence detected
+	char *response = "\n\n\r2534 is the best course in the curriculum!\r\n\n";
 
-    // Stops the Watchdog timer.
-    initBoard();
+	// Declare the variables that main uses to interact with your state machine.
+	bool finished = false;
 
-    // TODO: Declare a UART config struct as defined in uart.h.
-    //       To begin, configure the UART for 9600 baud, 8-bit payload (LSB first), no parity, 1 stop bit.
-    eUSCI_UART_ConfigV1 config =
-    {
-     EUSCI_A_UART_CLOCKSOURCE_SMCLK,
-     19,
-     8,
-     0x55,
-     EUSCI_A_UART_NO_PARITY,
-     EUSCI_A_UART_LSB_FIRST,
-     EUSCI_A_UART_ONE_STOP_BIT,
-     EUSCI_A_UART_MODE,
-     EUSCI_A_UART_OVERSAMPLING_BAUDRATE_GENERATION,
-     EUSCI_A_UART_8_BIT_LEN
-    };
+	// Stops the Watchdog timer.
+	initBoard();
 
-    // TODO: Make sure Tx AND Rx pins of EUSCI_A0 work for UART and not as regular GPIO pins.
-    GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1, GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
-    GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P1, GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
+	// Declare a UART config struct as defined in uart.h.
+	//       To begin, configure the UART for 9600 baud, 8-bit payload (LSB first), no parity, 1 stop bit.
+	eUSCI_UART_ConfigV1 config =
+			{
+					EUSCI_A_UART_CLOCKSOURCE_SMCLK,                // selectClockSource
+					19,                                            // clockPrescalar
+					8,                                             // firstModReg
+					0x55,                                          // secondModReg
+					EUSCI_A_UART_NO_PARITY,                        //  parity
+					EUSCI_A_UART_LSB_FIRST,                        // msborLsbFirst
+					EUSCI_A_UART_ONE_STOP_BIT,                     // numberofStopBits
+					EUSCI_A_UART_MODE,                             // uartMode
+					EUSCI_A_UART_OVERSAMPLING_BAUDRATE_GENERATION, // overSampling
+					EUSCI_A_UART_8_BIT_LEN                         // dataLength
+			};
 
-    // TODO: Initialize EUSCI_A0
-    UART_initModule(EUSCI_A0_BASE, &config);
+	// Make sure Tx AND Rx pins of EUSCI_A0 work for UART and not as regular GPIO pins.
+	GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P1, GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
+	GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_P1, GPIO_PIN3, GPIO_PRIMARY_MODULE_FUNCTION);
 
-    // TODO: Enable EUSCI_A0
-    UART_enableModule(EUSCI_A0_BASE);
+	// Initialize EUSCI_A0
+	UART_initModule(EUSCI_A0_BASE, &config);
 
-    while(1)
-    {
-        // TODO: Check the receive interrupt flag to see if a received character is available.
-        //       Return 0xFF if no character is available.
-        if(UART_getInterruptStatus(EUSCI_A0_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG) == EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG)
-        {
-            rChar = UART_receiveData(EUSCI_A0_BASE);
-        }
-        else
-        {
-            rChar = 0xFF;
-        }
+	// Enable EUSCI_A0
+	UART_enableModule(EUSCI_A0_BASE);
 
-        // TODO: If an actual character was received, echo the character to the terminal AND use it to update the FSM.
-        //       Check the transmit interrupt flag prior to transmitting the character.
-        if(rChar != 0xFF)
-        {
-            UART_transmitData(EUSCI_A0_BASE, rChar);
-            finished = charFSM(rChar);
-        }
+	while(1) {
+		// Check the receive interrupt flag to see if a received character is available.
+		//       Return 0xFF if no character is available.
+		rChar = UART_getInterruptStatus(EUSCI_A0_BASE, EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG) ==
+				EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG ? UART_receiveData(EUSCI_A0_BASE) : 0xFF;
 
-        // TODO: If the FSM indicates a successful string entry, transmit the response string.
-        //       Check the transmit interrupt flag prior to transmitting each character and moving on to the next one.
-        //       Make sure to reset the success variable after transmission.
-        if (finished) {
-            int i = 0;
-            while(response[i] != '\0') {
-                UART_transmitData(EUSCI_A0_BASE, response[i]);
-                i++;
-            }
+		// If an actual character was received, echo the character to the terminal AND use it to update the FSM.
+		//       Check the transmit interrupt flag prior to transmitting the character.
+		if(rChar != 0xFF) {
+			UART_transmitData(EUSCI_A0_BASE, rChar);
+			finished = charFSM(rChar);
+		}
 
-            finished = false;
-        }
+		// If the FSM indicates a successful string entry, transmit the response string.
+		//       Check the transmit interrupt flag prior to transmitting each character and moving on to the next one.
+		//       Make sure to reset the success variable after transmission.
+		if(finished) {
+			int i = 0;
 
-    }
+			// Attempt to send all characters of response string while transmit interrupt flag is not active
+			while(response[i] != '\0') {
+				if(UART_getInterruptStatus(EUSCI_A0_BASE, EUSCI_A_UART_TRANSMIT_INTERRUPT_FLAG) !=
+				   EUSCI_A_UART_TRANSMIT_INTERRUPT_FLAG) {
+					UART_transmitData(EUSCI_A0_BASE, response[i]);
+					i++;
+				}
+			}
+			finished = false; // Reset the value of finished when found
+		}
+	}
 }
 
-void initBoard()
-{
-    WDT_A_hold(WDT_A_BASE);
+// Initializes board
+void initBoard() {
+	WDT_A_hold(WDT_A_BASE);
 }
 
-// TODO: FSM for detecting character sequence.
-bool charFSM(char rChar)
-{
-    bool finished = false;
-    static int currentState = 0;
-    switch (currentState) {
-    case 0:
-        currentState = rChar == '2' ? 1 : 0;
-        break;
-    case 1:
-        currentState = rChar == '5' ? 2 : 0;
-        break;
-    case 2:
-        currentState = rChar == '3' ? 3 : 0;
-        break;
-    case 3:
-        finished = rChar == '4' ? true : false;
-        currentState = 0;
-        break;
-    }
-    return finished;
+// FSM for detecting character sequence.
+bool charFSM(char rChar) {
+	// Instantiate and declare an enumeration for storing the finite-state
+	// machine's current state
+	static enum State currentState = FIRST;
+
+	bool finished = false; // Variable for storing return value of function
+
+	// Switch based on current state
+	switch(currentState) {
+		case FIRST:
+			currentState = rChar == '2' ? SECOND : FIRST;
+			break;
+		case SECOND:
+			currentState = rChar == '5' ? THIRD : FIRST;
+			break;
+		case THIRD:
+			currentState = rChar == '3' ? FOURTH : FIRST;
+			break;
+		case FOURTH:
+			finished = rChar == '4' ? true : false;
+			currentState = FIRST;
+			break;
+		default:
+			currentState = FIRST;
+			break;
+	}
+	return finished;
 }
