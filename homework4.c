@@ -93,11 +93,11 @@ bool charFSM(char rChar) {
 			currentState = rChar == '5' ? THIRD : rChar == '2' ? SECOND : FIRST;
 			break;
 		case THIRD:
-			currentState = rChar == '3' ? FOURTH : FIRST;
+			currentState = rChar == '3' ? FOURTH : rChar == '2' ? SECOND : FIRST;
 			break;
 		case FOURTH:
+            currentState = rChar == '2' ? SECOND : FIRST;
 			finished = rChar == '4' ? true : false;
-			currentState = FIRST;
 			break;
 		default:
 			currentState = FIRST;
